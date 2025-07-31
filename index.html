@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Mini Matematik Chatbot</title>
+<style>
+/* CSS aynı bırakıldı */
+body { font-family: Comic Sans MS, sans-serif; background: #f0f8ff; text-align: center; padding: 20px; }
+#chat { width: 90%; max-width: 500px; margin: 20px auto; background: #fff; border: 2px solid #ccc; border-radius: 10px; padding: 10px; height: 300px; overflow-y: auto; text-align: left; }
+.message { margin: 10px 0; }
+.bot { color: blue; }
+.user { color: green; text-align: right; }
+.btn-choice, .btn-alt { margin: 5px; padding: 10px 20px; font-size: 16px; border-radius: 10px; border: none; cursor: pointer; }
+.btn-user { background: #90ee90; }
+.btn-bot { background: #add8e6; }
+.btn-alt { background: #ffcccb; }
+#inputArea, #drawAreaContainer { margin-top: 10px; display: none; }
+canvas { border: 2px solid #ccc; border-radius: 10px; background: white; cursor: crosshair; }
+</style>
+</head>
+<body>
+<h1>🧠 Mini Matematik Chatbot</h1>
+<div id="chat"></div>
+
+<div id="choiceArea">
+  <p>Merhaba! Soruları kim sorsun bakalım? 🙋‍♀️</p>
+  <button class="btn-choice btn-user" onclick="setMode('user_asks')">Ben sorayım!</button>
+  <button class="btn-choice btn-bot" onclick="setMode('bot_asks')">Sen sor!</button>
+  <br><br>
+  <button class="btn-alt" onclick="enableDrawMode()">İstersen klavyesiz devam edelim?</button>
+</div>
+
+<div id="inputArea">
+  <input type="text" id="answerInput" placeholder="Cevabını yaz" />
+  <button onclick="sendAnswer()">Gönder</button>
+</div>
+
+<div id="drawAreaContainer">
+  <p>İşlemin sonucunu çiz: <span id="drawQuestion"></span></p>
+  <canvas id="drawCanvas" width="280" height="280"></canvas><br>
+  <button onclick="submitDrawing()">Gönder</button>
+  <button onclick="clearCanvas()">Temizle</button>
+</div>
+
+<script>
+let mode = null, correctAnswer = null, drawMode = false;
+
+function addMessage(text, sender='bot'){
+  const chat=document.getElementById('chat');
+  const div=document.createElement('div');
+  div.classList.add('message',sender); div.innerText=text;
+  chat.appendChild(div); chat.scrollTop=chat.scrollHeight;
+}
+
+function setMode(selectedMode){
+  mode=selectedMode; drawMode=false;
+  document.getElementById('choiceArea').style.display='none';
+  document.getElementById('inputArea').style.display='block';
+  document.getElementById('drawAreaContainer').style.display='none';
+  if(mode==='user_asks'){ addMessage("Tamam! Sen sor 🤓"); }
+  else{ addMessage("Ben soruyorum, hazır mısın? 🎯"); askNewQuestion(); }
+}
+
+function askNewQuestion(){
+  let a, b;
+  const operators = ['+', '-'];
+  const op = operators[Math.floor(Math.random() * operators.length)];
+
+  do {
+    a = Math.floor(Math.random() * 10) + 1;
+    b = Math.floor(Math.random() * 10) + 1;
+  } while (op === '+' && a + b > 9);  // Toplam 9'dan büyükse tekrar seç
+
+  if (op === '-' && b > a) {
+    [a, b] = [b, a];  // Negatif sonucu engelle
+  }
+
+  const questionText = `${a} ${op} ${b}`;
+  correctAnswer = eval(questionText);
+
+  if(drawMode) document.getElementById('drawQuestion').innerText = questionText;
+  addMessage(`Soru: ${questionText} kaç eder?`, 'bot');
+}
+
+
+
+function sendAnswer(){
+  const input=document.getElementById('answerInput'); const userAnswer=input.value;
+  if(!userAnswer) return; addMessage(userAnswer,'user');
+  if(mode==='user_asks'){
+    fetch('http://127.0.0.1:5000/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:userAnswer})})
+    .then(r=>r.json()).then(d=>addMessage(d.reply,'bot'));
+  }else{
+    fetch('http://127.0.0.1:5000/check_answer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer:userAnswer,correct:correctAnswer})})
+    .then(r => r.json()).then(d => {
+  addMessage(d.reply, 'bot');
+  setTimeout(() => askNewQuestion(), 1000);  // Her durumda devam et
+});
+
+  }
+  input.value='';
+}
+
+function enableDrawMode(){
+  drawMode=true; mode='bot_asks';
+  document.getElementById('choiceArea').style.display='none';
+  document.getElementById('inputArea').style.display='none';
+  document.getElementById('drawAreaContainer').style.display='block';
+  askNewQuestion();
+}
+
+// Canvas
+const canvas=document.getElementById('drawCanvas'); const ctx=canvas.getContext('2d'); let drawing=false;
+canvas.addEventListener('mousedown',()=>drawing=true);
+canvas.addEventListener('mouseup',()=>drawing=false);
+canvas.addEventListener('mouseleave',()=>drawing=false);
+canvas.addEventListener('mousemove',e=>{
+  if(!drawing) return;
+  const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  ctx.fillStyle='black'; ctx.beginPath(); ctx.arc(x,y,3,0,2*Math.PI); ctx.fill();
+});
+function clearCanvas(){ ctx.clearRect(0,0,canvas.width,canvas.height); }
+
+function submitDrawing() {
+  // Yeni geçici canvas oluştur
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = canvas.width;
+  tempCanvas.height = canvas.height;
+  const tempCtx = tempCanvas.getContext('2d');
+
+  // Önce beyaz arka plan çiz
+  tempCtx.fillStyle = 'white';
+  tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+  // Ana canvas içeriğini kopyala
+  tempCtx.drawImage(canvas, 0, 0);
+
+  // Base64 veriyi al
+  const base64Image = tempCanvas.toDataURL('image/png');
+
+  // Sunucuya gönder
+  fetch('http://127.0.0.1:5000/predict_digit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: base64Image, correct: correctAnswer })
+  })
+  .then(r => r.json())
+  .then(d => {
+    addMessage(d.reply, 'bot');
+    if (d.correct) {
+      clearCanvas();
+      setTimeout(() => askNewQuestion(), 1000);
+    }
+  });
+}
+
+</script>
+</body>
+</html>
