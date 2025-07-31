@@ -21,9 +21,7 @@ Böylece öğrenme süreci çok daha eğlenceli ve interaktif hale gelir. 🎈�
 
 👧👦 Hedef Kitle
 6–10 yaş arası çocuklar
-
 Matematiğe yeni başlayanlar
-
 Oyun yoluyla öğrenmeyi seven öğrenciler 🎮📖
 
 🚀 Kurulum ve Çalıştırma
@@ -33,9 +31,7 @@ pip install torch flask opencv-python pytesseract
 
 ▶️ Uygulamayı Başlatmak
 Terminal veya komut istemcisinde projenin bulunduğu dizine gidin.
-
-Flask uygulamasını başlatmak için(terminale):
-python app.py
+Flask uygulamasını başlatmak için(terminale):python app.py
 
 Uygulama çalışmaya başladıktan sonra tarayıcınızı açın ve şu adresi ziyaret edin:
 http://127.0.0.1:5000 ya da
