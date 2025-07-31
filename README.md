@@ -1,5 +1,6 @@
 # Ai79
 🎉 Mini Matematik Chatbot
+
 📚 Proje Özeti
 Bu proje, ilkokul çağındaki çocukların temel matematik işlemlerini eğlenceli ve etkileşimli şekilde öğrenmelerini sağlayan bir chatbot uygulamasıdır.
 Çocuklar, soruları doğal Türkçe ifadelerle yazılı olarak ya da çizerek yanıtlayabilirler. 📝✍️
